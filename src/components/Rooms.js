@@ -277,12 +277,15 @@ export class Rooms extends React.Component {
         const otherRooms = [];
         const roomUserDisplayNameMap = new Map();
         this.userToRoomMap.forEach((room, userId, map) => {
+        
             const displayName = this.userMap.get(userId);
-            if (roomUserDisplayNameMap.has(room)) {
-                roomUserDisplayNameMap.get(room).push(displayName);
-            }
-            else {
-                roomUserDisplayNameMap.set(room, [displayName]);
+            if (displayName && displayName.trim().length>0) {
+                if (roomUserDisplayNameMap.has(room)) {
+                    roomUserDisplayNameMap.get(room).push(displayName);
+                }
+                else {
+                    roomUserDisplayNameMap.set(room, [displayName]);
+                }
             }
         });
         for (const roomId of this.rooms) {
@@ -304,14 +307,14 @@ export class Rooms extends React.Component {
             const occupantItems = [];
             if (room.occupants) {
                 for (const occupant of room.occupants) {
-                    occupantItems.push(<ListGroup.Item>{occupant}</ListGroup.Item>);
+                    occupantItems.push(<ListGroup.Item className="p-0 m-0">{occupant}</ListGroup.Item>);
                 }
             }
             otherRoomsCards.push(<Row key={room.roomId}><Card style={{ width: '200px' }}>
                 <Card.Header as="h6">{room.roomName}</Card.Header>
                 <Card.Img src="https://storiescdn.hornet.com/wp-content/uploads/2017/03/06131906/fire_island.jpg" />
-                <Card.Body>
-                    <ListGroup>{occupantItems}</ListGroup>
+                <Card.Body className="p-1 m-1">
+                    <ListGroup className="p-0 m-0">{occupantItems}</ListGroup>
                 </Card.Body>
 
                 <Button variant="primary" onClick={() => this.changeRooms(room.roomId)}>Enter</Button>

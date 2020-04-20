@@ -79,7 +79,7 @@ export class Party extends React.Component {
         For questions about Jitsi security and privacy see <a href="https://jitsi.org/blog/security/">https://jitsi.org/blog/security/</a>. When only two people are in 
         a room, video and audio is encrypted end to end between the two occupant's computers. When more people are in the room, video and audio is encypted to and 
         from meet.jit.si. Data is always encrypted in transit.</Alert>
-        <LetMeIn enterParty={this.enterParty} name={this.state.displayName} party={this.state.party} message={this.state.message} />
+        <LetMeIn enterParty={this.enterParty} name={this.state.displayName} partyName={this.state.party} message={this.state.message} />
       </Container>);
     }
     else {
