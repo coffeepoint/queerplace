@@ -102,7 +102,13 @@ export class Rooms extends React.Component {
             });
             that.room.on(JitsiMeetJS.events.conference.MESSAGE_RECEIVED, (id, roomId, ts) => {
                 console.log('Room change ' + id + ':' + that.userMap.get(id) + ' ' + roomId);
-                that.userToRoomMap.set(id, roomId);
+                if (roomId==='left') {
+                    that.userMap.delete(id);
+                    that.userToRoomMap.delete(id);                  
+                }
+                else {
+                    that.userToRoomMap.set(id, roomId);
+                }
                 that.updateState();
             });
             that.room.join();
@@ -243,6 +249,7 @@ export class Rooms extends React.Component {
     }
 
     leaveParty() {
+        this.room.sendTextMessage('left');
         this.cleanUpJitsi();
         this.props.logout();
     }
