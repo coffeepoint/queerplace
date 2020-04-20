@@ -320,7 +320,7 @@ export class Rooms extends React.Component {
         const anyRoomWarnings = [];
         const anyRoomQuestion = [];
         if (this.state.displayNakedRoomWarning) {
-            const text = ((this.isNakedRoom(this.currentRoomId))?'Mig\'s insists that those in his room are, like him, naked. Please respect other people in the room and only enter if you are not wearing anything.'+
+            const text = ((this.isNakedRoom(this.currentRoomId))?'Mig\'s insists that those in his room are, like him, naked. Please respect other people in the room and only enter if you are not wearing anything. '+
             'If you are not comfortable being naked please join another room.':'Put some clothes on, you are entering a non-naked room!');
             const buttonText = (this.isNakedRoom(this.currentRoomId))?'OK I\'m naked, let me in':'OK I\'m decent, let me in';
             anyRoomWarnings.push(<Container><Alert key='nakedWarning' variant="warning">
