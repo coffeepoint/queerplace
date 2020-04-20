@@ -21,11 +21,11 @@ export class LetMeIn extends React.Component {
 
       <Form.Group controlId="YourName">
         <Form.Label>Your Name</Form.Label>
-        <Form.Control ref={this.nameInput} type="text" placeholder="Your Name" value={this.props.name} />
+        <Form.Control ref={this.nameInput} type="text" placeholder="Your Name" defaultValue={this.props.name} />
       </Form.Group>
       <Form.Group controlId="Party">
         <Form.Label>Party</Form.Label>
-        <Form.Control ref={this.partyInput} type="text" placeholder="Enter Party to Join" value={this.props.partyName} />
+        <Form.Control ref={this.partyInput} type="text" placeholder="Enter Party to Join" defaultValue={this.props.partyName} />
         <Form.Text className="text-muted">
           Enter the string given to you by the host
         </Form.Text>
