@@ -9,6 +9,7 @@ import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
 import JitsiMeetJS from '../jitsi-meet-js';
 import JitsiMeetExternalAPI from '../jitsi-external';
+import roomConfig from '../roomConfig';
 
 
 export class Rooms extends React.Component {
@@ -21,21 +22,18 @@ export class Rooms extends React.Component {
     userMap = new Map();
     userToRoomMap = new Map();
     usersToQuestion = [];
-    rooms = ['t43hr3', 'dasdsa', 'herh3s', 'feyewr', 'weyrehj'];
+    nakedRooms = [];
+    initialRoom = undefined;
+    rooms = [];
     roomMap = new Map();
     passwordTried = false;
-
 
     constructor(props) {
         super(props);
         this.confirmUser.bind(this);
         this.rejectUser.bind(this);
-        this.roomMap.set('hrwtre', 'Living Room');
-        this.roomMap.set('t43hr3', 'Balcony');
-        this.roomMap.set('dasdsa', 'Mig\'s Room (Naked)');
-        this.roomMap.set('herh3s', 'Brian And Tom\'s Bedroom');
-        this.roomMap.set('feyewr', 'Terrace');
-        this.roomMap.set('weyrehj', 'Kitchen');
+        this.setupRooms();
+
         this.userQuestionInput = React.createRef();
         this.displayNakedRoomWarning = false;
         this.state = this.makeState();
@@ -89,7 +87,7 @@ export class Rooms extends React.Component {
                 }
                 that.userMap.set(that.room.myUserId(), that.props.displayName);
                 that.room.setDisplayName(that.props.displayName);
-                that.changeRooms('hrwtre');
+                that.changeRooms(that.initialRoom);
             });
             that.room.on(JitsiMeetJS.events.conference.CONFERENCE_FAILED, (errorCode) => {
                 if (errorCode === JitsiMeetJS.errors.conference.PASSWORD_REQUIRED) {
@@ -111,6 +109,22 @@ export class Rooms extends React.Component {
         }
         connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, onConnectionSuccess);
         connection.connect();
+    }
+
+    setupRooms() {
+        for (const room of roomConfig) {
+            this.roomMap.set(room.roomId, room.roomName+(room.roomType==='naked'?' (Naked)':''));
+            if (room.roomType==='naked') {
+                this.nakedRooms.push(room.roomId);
+                this.rooms.push(room.roomId);
+            }
+            else if (room.roomType==='initial' && !this.initialRoom) {
+                this.initialRoom = room.roomId;
+            }
+            else {
+                this.rooms.push(room.roomId);
+            }
+        }
     }
 
     confirmUser() {
@@ -185,6 +199,16 @@ export class Rooms extends React.Component {
                     this.usersToQuestion.push(user);
                     this.updateState();
                 });
+                this.api.on('participantLeft', (userWhoLeft) => {
+                    const newUsersToQuestion = [];
+                    for (const user of this.usersToQuestion) {
+                        if (user.id!=userWhoLeft.id) {
+                            newUsersToQuestion.push(user);
+                        }
+                    }
+                    this.usersToQuestion = newUsersToQuestion;
+                    this.updateState();
+                });
                 this.api.on('videoConferenceLeft', (data) => {
                     console.log('&& left '+data.roomName);
                     this.usersToQuestion.length = 0;
@@ -215,7 +239,7 @@ export class Rooms extends React.Component {
 
 
     isNakedRoom(roomId) {
-        return roomId === 'dasdsa';
+        return this.nakedRooms.includes(roomId);
     }
 
     leaveParty() {
