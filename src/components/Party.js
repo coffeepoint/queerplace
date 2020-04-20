@@ -84,7 +84,7 @@ export class Party extends React.Component {
     }
     else {
       return (<Container fluid>
-        <h1>Jitsi Party</h1>
+        <h1>Jitsi Party: A Multi-Room Virtual House Party</h1>
         <Rooms loginFailed={this.loginFailed} logout={this.logout} prefix={this.state.partyName} displayName={this.state.displayName} password={this.state.password} />
       </Container>);
     }

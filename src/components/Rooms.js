@@ -6,6 +6,7 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Alert from 'react-bootstrap/Alert';
 import ListGroup from 'react-bootstrap/ListGroup';
+import Form from 'react-bootstrap/Form';
 import JitsiMeetJS from '../jitsi-meet-js';
 import JitsiMeetExternalAPI from '../jitsi-external';
 
@@ -19,30 +20,25 @@ export class Rooms extends React.Component {
     currentRoomId = null;
     userMap = new Map();
     userToRoomMap = new Map();
+    usersToQuestion = [];
     rooms = ['t43hr3', 'dasdsa', 'herh3s', 'feyewr', 'weyrehj'];
     roomMap = new Map();
     passwordTried = false;
 
+
     constructor(props) {
         super(props);
+        this.confirmUser.bind(this);
+        this.rejectUser.bind(this);
         this.roomMap.set('hrwtre', 'Living Room');
         this.roomMap.set('t43hr3', 'Balcony');
         this.roomMap.set('dasdsa', 'Mig\'s Room (Naked)');
         this.roomMap.set('herh3s', 'Brian And Tom\'s Bedroom');
         this.roomMap.set('feyewr', 'Terrace');
         this.roomMap.set('weyrehj', 'Kitchen');
+        this.userQuestionInput = React.createRef();
         this.displayNakedRoomWarning = false;
-        this.state = {
-            displayNakedRoomWarning: this.displayNakedRoomWarning,
-            currentRoom: "LivingRoom",
-            currentRoomId: "hrwtre",
-            otherRooms: [{ roomId: 't43hr3', roomName: "Balcony", occupants: [] },
-            { roomId: 'dasdsa', roomName: "Mig's Room (Naked)", occupants: [] },
-            { roomId: 'herh3s', roomName: "Brian And Tom's Bedroom", occupants: [] },
-            { roomId: 'feyewr', roomName: "Terrace", occupants: [] },
-            { roomId: 'weyrehj', roomName: "Kitchen", occupants: [] },
-            ],
-        };
+        this.state = this.makeState();
         // initiate Jitsi
         const lowLevelOptions = {
             hosts: {
@@ -117,6 +113,28 @@ export class Rooms extends React.Component {
         connection.connect();
     }
 
+    confirmUser() {
+        const newUserList = [];
+        for (const user of this.usersToQuestion) {
+            if (user.id != this.userQuestionInput.current.value) {
+                newUserList.push(user);
+            }
+        }
+        this.usersToQuestion = newUserList;
+        this.updateState();
+    }
+
+    rejectUser() {
+        const newUserList = [];
+        for (const user of this.usersToQuestion) {
+            if (user.id != this.userQuestionInput.current.value) {
+                newUserList.push(user);
+            }
+        }
+        this.usersToQuestion = newUserList;
+        this.api.executeCommand('sendEndpointTextMessage', this.userQuestionInput.current.value, 'notnaked'); 
+        this.updateState();      
+    }
 
     options() {
         return {
@@ -141,7 +159,7 @@ export class Rooms extends React.Component {
 
 
     changeRooms(roomId, askForConfirm = true) {
-        if ((roomId === 'dasdsa' || this.currentRoomId === 'dasdsa') && askForConfirm) {
+        if ((this.isNakedRoom(roomId) || this.isNakedRoom(this.currentRoomId)) && askForConfirm) {
             this.displayNakedRoomWarning = true;
         }
         else {
@@ -161,6 +179,24 @@ export class Rooms extends React.Component {
         if (!this.displayNakedRoomWarning) {
             console.log('@@@ ' + this.options());
             this.api = new JitsiMeetExternalAPI(this.domain, this.options());
+            if (this.isNakedRoom(this.currentRoomId)) {
+                this.api.on('participantJoined', (user) => {
+                    console.log('&& joined '+user.id);
+                    this.usersToQuestion.push(user);
+                    this.updateState();
+                });
+                this.api.on('videoConferenceLeft', (data) => {
+                    console.log('&& left '+data.roomName);
+                    this.usersToQuestion.length = 0;
+                    this.updateState();
+                });
+                this.api.on('endpointTextMessageReceived', (data) => {
+                    this.api.executeCommand('hangup');
+                    this.api.dispose();
+                    this.displayNakedRoomWarning = true;
+                    this.updateState();
+                });
+            }
             this.api.on('passwordRequired', () => {
                 this.api.executeCommand('password', this.props.password);
             });
@@ -168,6 +204,7 @@ export class Rooms extends React.Component {
                 this.api.executeCommand('password', this.props.password);
                 this.api.executeCommand('subject', this.roomMap.get(this.currentRoomId));
             });
+
             this.api.executeCommand('displayName', this.props.displayName);
             this.room.sendTextMessage(this.currentRoomId);
         }
@@ -176,6 +213,10 @@ export class Rooms extends React.Component {
         }
     }
 
+
+    isNakedRoom(roomId) {
+        return roomId === 'dasdsa';
+    }
 
     leaveParty() {
         this.cleanUpJitsi();
@@ -203,6 +244,12 @@ export class Rooms extends React.Component {
 
 
     updateState() {
+        const newState = this.makeState();
+        this.setState(newState);
+    }
+
+
+    makeState() {
         const otherRooms = [];
         const roomUserDisplayNameMap = new Map();
         this.userToRoomMap.forEach((room, userId, map) => {
@@ -217,14 +264,15 @@ export class Rooms extends React.Component {
         for (const roomId of this.rooms) {
             otherRooms.push({ roomId: roomId, roomName: this.roomMap.get(roomId), occupants: roomUserDisplayNameMap.get(roomId) });
         }
-        this.setState({
+        const newState = {
             "displayNakedRoomWarning": this.displayNakedRoomWarning,
             "currentRoomId": this.currentRoom,
+            "usersToQuestion": this.usersToQuestion,
             "currentRoom": this.roomMap.get(this.currentRoomId),
             "otherRooms": otherRooms
-        });
+        };
+        return newState;
     }
-
 
     render() {
         const otherRoomsCards = [];
@@ -246,13 +294,27 @@ export class Rooms extends React.Component {
             </Card></Row>);
         }
         const anyRoomWarnings = [];
+        const anyRoomQuestion = [];
         if (this.state.displayNakedRoomWarning) {
-            const text = ((this.currentRoomId==='dasdsa')?'Mig\'s insists that those in his room are, like him, naked. Please respect other people in the room and only enter if you are not wearing anything.'+
+            const text = ((this.isNakedRoom(this.currentRoomId))?'Mig\'s insists that those in his room are, like him, naked. Please respect other people in the room and only enter if you are not wearing anything.'+
             'If you are not comfortable being naked please join another room.':'Put some clothes on, you are entering a non-naked room!');
-            const buttonText = (this.currentRoomId==='dasdsa')?'OK I\'m naked, let me in':'OK I\'m decent, let me in';
+            const buttonText = (this.isNakedRoom(this.currentRoomId))?'OK I\'m naked, let me in':'OK I\'m decent, let me in';
             anyRoomWarnings.push(<Container><Alert key='nakedWarning' variant="warning">
                 {text}</Alert>
                 <Button variant="primary" onClick={() => this.changeRooms(this.currentRoomId, false)}>{buttonText}</Button></Container>);
+        }
+        else if (this.isNakedRoom(this.currentRoomId)) {
+            const options = [];
+            for (const user of this.state.usersToQuestion) {
+                options.push(<option value={user.id} >{user.displayName}</option>)
+            }
+            if (options.length>0) {
+                anyRoomQuestion.push(<Form inline>Is&nbsp;<Form.Group controlId="isnaked">
+                <Form.Control as="select" ref={this.userQuestionInput}>
+                    {options}
+                </Form.Control>&nbsp;naked?&nbsp;<Button onClick={() => this.confirmUser()}>Yes</Button><Button onClick={() => this.rejectUser()}>No</Button>
+            </Form.Group></Form>);
+            }
         }
         return (<Container fluid>
             <Row>
@@ -265,8 +327,10 @@ export class Rooms extends React.Component {
                         <Card.Body>
                             {anyRoomWarnings}
                             <div id="meet" style={{ width: '100%' }} />
+                            {anyRoomQuestion}
                         </Card.Body>
                     </Card>
+
                 </Col>
                 <Col md="auto"><Container fluid>{otherRoomsCards}</Container></Col>
             </Row>
