@@ -1,0 +1,276 @@
+import React from 'react';
+import Container from 'react-bootstrap/Container';
+import Button from 'react-bootstrap/Button';
+import Card from 'react-bootstrap/Card';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
+import Alert from 'react-bootstrap/Alert';
+import ListGroup from 'react-bootstrap/ListGroup';
+import JitsiMeetJS from '../jitsi-meet-js';
+import JitsiMeetExternalAPI from '../jitsi-external';
+
+
+export class Rooms extends React.Component {
+
+    domain = 'meet.jit.si';
+    api = null;
+    room = null;
+    connection = null;
+    currentRoomId = null;
+    userMap = new Map();
+    userToRoomMap = new Map();
+    rooms = ['t43hr3', 'dasdsa', 'herh3s', 'feyewr', 'weyrehj'];
+    roomMap = new Map();
+    passwordTried = false;
+
+    constructor(props) {
+        super(props);
+        this.roomMap.set('hrwtre', 'Living Room');
+        this.roomMap.set('t43hr3', 'Balcony');
+        this.roomMap.set('dasdsa', 'Mig\'s Room (Naked)');
+        this.roomMap.set('herh3s', 'Brian And Tom\'s Bedroom');
+        this.roomMap.set('feyewr', 'Terrace');
+        this.roomMap.set('weyrehj', 'Kitchen');
+        this.displayNakedRoomWarning = false;
+        this.state = {
+            displayNakedRoomWarning: this.displayNakedRoomWarning,
+            currentRoom: "LivingRoom",
+            currentRoomId: "hrwtre",
+            otherRooms: [{ roomId: 't43hr3', roomName: "Balcony", occupants: [] },
+            { roomId: 'dasdsa', roomName: "Mig's Room (Naked)", occupants: [] },
+            { roomId: 'herh3s', roomName: "Brian And Tom's Bedroom", occupants: [] },
+            { roomId: 'feyewr', roomName: "Terrace", occupants: [] },
+            { roomId: 'weyrehj', roomName: "Kitchen", occupants: [] },
+            ],
+        };
+        // initiate Jitsi
+        const lowLevelOptions = {
+            hosts: {
+                domain: 'meet.jit.si',
+                muc: 'conference.meet.jit.si',
+            },
+            bosh: 'wss://meet.jit.si/xmpp-websocket?room=' + this.props.prefix,
+            serviceUrl: 'wss://meet.jit.si/xmpp-websocket?room=' + this.props.prefix,
+            clientNode: 'http://jitsi.org/jitsimeet',
+            websocket: 'wss://meet.jit.si/xmpp-websocket' // FIXME: use xep-0156 for that
+        };
+        const initOptions = {
+            disableAudioLevels: true
+        };
+        JitsiMeetJS.init(initOptions);
+        const that = this;
+        const connection = new JitsiMeetJS.JitsiConnection(null, null, lowLevelOptions);
+        function onConnectionSuccess() {
+            console.log('Connection Success');
+            that.room = connection.initJitsiConference(that.props.prefix, {
+                'startSilent': true,
+                openBridgeChannel: true
+            });
+            that.room.on(JitsiMeetJS.events.conference.USER_JOINED, (id, participant) => {
+                console.log('user joined ' + id + ' ' + participant.getDisplayName());
+                if (participant.getDisplayName()) {
+                    that.userMap.set(id, participant.getDisplayName());
+                }
+            });
+            that.room.on(JitsiMeetJS.events.conference.TRACK_ADDED, track => { });
+            that.room.on(JitsiMeetJS.events.conference.TRACK_REMOVED, track => {
+                console.log(`track removed!!!${track}`);
+            });
+            that.room.on(JitsiMeetJS.events.conference.USER_LEFT, id => {
+                console.log('user left ' + id);
+                that.userMap.delete(id);
+                that.userToRoomMap.delete(id);
+                that.updateState();
+            });
+            that.room.on(JitsiMeetJS.events.conference.DISPLAY_NAME_CHANGED, (id, displayName) => {
+                console.log('user ' + id + ' changed name to ' + displayName);
+                that.userMap.set(id, displayName);
+            });
+            that.room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, () => {
+                console.log('Conference Joined');
+                if (!that.passwordTried) {
+                    that.room.lock(that.props.password);
+                }
+                that.userMap.set(that.room.myUserId(), that.props.displayName);
+                that.room.setDisplayName(that.props.displayName);
+                that.changeRooms('hrwtre');
+            });
+            that.room.on(JitsiMeetJS.events.conference.CONFERENCE_FAILED, (errorCode) => {
+                if (errorCode === JitsiMeetJS.errors.conference.PASSWORD_REQUIRED) {
+                    if (that.passwordTried) {
+                        that.props.loginFailed();
+                    }
+                    else {
+                        that.passwordTried = true;
+                        that.room.join(that.props.password);
+                    }
+                }
+            });
+            that.room.on(JitsiMeetJS.events.conference.MESSAGE_RECEIVED, (id, roomId, ts) => {
+                console.log('Room change ' + id + ':' + that.userMap.get(id) + ' ' + roomId);
+                that.userToRoomMap.set(id, roomId);
+                that.updateState();
+            });
+            that.room.join();
+        }
+        connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, onConnectionSuccess);
+        connection.connect();
+    }
+
+
+    options() {
+        return {
+            roomName: this.props.prefix + this.currentRoomId,
+            width: '100%',
+            height: '650px',
+            interfaceConfigOverwrite: {
+                SHOW_JITSI_WATERMARK: false,
+                TOOLBAR_BUTTONS: [
+                    'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
+                    'fodeviceselection', 'chat',
+                    'etherpad', 'sharedvideo', 'settings', 'raisehand',
+                    'videoquality', 'filmstrip', 'invite', 'feedback', 'stats', 'shortcuts',
+                    'tileview', 'videobackgroundblur', 'download', 'help', 'mute-everyone',
+                    'e2ee'
+                ],
+                SETTINGS_SECTIONS: ['devices', 'language']
+            },
+            parentNode: document.querySelector('#meet')
+        };
+    }
+
+
+    changeRooms(roomId, askForConfirm = true) {
+        if ((roomId === 'dasdsa' || this.currentRoomId === 'dasdsa') && askForConfirm) {
+            this.displayNakedRoomWarning = true;
+        }
+        else {
+            this.displayNakedRoomWarning = false;
+        }
+        console.log('@@@ ' + roomId);
+        const i = this.rooms.indexOf(roomId);
+        console.log('@@@ ' + i);
+        if (i > -1) {
+            this.rooms[i] = this.currentRoomId;
+        }
+        this.currentRoomId = roomId;
+        if (this.api) {
+            this.api.executeCommand('hangup');
+            this.api.dispose();
+        }
+        if (!this.displayNakedRoomWarning) {
+            console.log('@@@ ' + this.options());
+            this.api = new JitsiMeetExternalAPI(this.domain, this.options());
+            this.api.on('passwordRequired', () => {
+                this.api.executeCommand('password', this.props.password);
+            });
+            this.api.on('videoConferenceJoined', () => {
+                this.api.executeCommand('password', this.props.password);
+                this.api.executeCommand('subject', this.roomMap.get(this.currentRoomId));
+            });
+            this.api.executeCommand('displayName', this.props.displayName);
+            this.room.sendTextMessage(this.currentRoomId);
+        }
+        else {
+            this.updateState();
+        }
+    }
+
+
+    leaveParty() {
+        this.cleanUpJitsi();
+        this.props.logout();
+    }
+
+
+    cleanUpJitsi() {
+        if (this.api) {
+            this.api.executeCommand('hangup');
+            this.api.dispose();
+        }
+        if (this.room) {
+            this.room.leave();
+        }
+        if (this.connection) {
+            this.connection.disconnect();
+        }
+    }
+
+
+    componentWillUnmount() {
+        this.cleanUpJitsi();
+    }
+
+
+    updateState() {
+        const otherRooms = [];
+        const roomUserDisplayNameMap = new Map();
+        this.userToRoomMap.forEach((room, userId, map) => {
+            const displayName = this.userMap.get(userId);
+            if (roomUserDisplayNameMap.has(room)) {
+                roomUserDisplayNameMap.get(room).push(displayName);
+            }
+            else {
+                roomUserDisplayNameMap.set(room, [displayName]);
+            }
+        });
+        for (const roomId of this.rooms) {
+            otherRooms.push({ roomId: roomId, roomName: this.roomMap.get(roomId), occupants: roomUserDisplayNameMap.get(roomId) });
+        }
+        this.setState({
+            "displayNakedRoomWarning": this.displayNakedRoomWarning,
+            "currentRoomId": this.currentRoom,
+            "currentRoom": this.roomMap.get(this.currentRoomId),
+            "otherRooms": otherRooms
+        });
+    }
+
+
+    render() {
+        const otherRoomsCards = [];
+        for (const room of this.state.otherRooms) {
+            const occupantItems = [];
+            if (room.occupants) {
+                for (const occupant of room.occupants) {
+                    occupantItems.push(<ListGroup.Item>{occupant}</ListGroup.Item>);
+                }
+            }
+            otherRoomsCards.push(<Row key={room.roomId}><Card style={{ width: '200px' }}>
+                <Card.Header as="h6">{room.roomName}</Card.Header>
+                <Card.Img src="https://storiescdn.hornet.com/wp-content/uploads/2017/03/06131906/fire_island.jpg" />
+                <Card.Body>
+                    <ListGroup>{occupantItems}</ListGroup>
+                </Card.Body>
+
+                <Button variant="primary" onClick={() => this.changeRooms(room.roomId)}>Enter</Button>
+            </Card></Row>);
+        }
+        const anyRoomWarnings = [];
+        if (this.state.displayNakedRoomWarning) {
+            const text = ((this.currentRoomId==='dasdsa')?'Mig\'s insists that those in his room are, like him, naked. Please respect other people in the room and only enter if you are not wearing anything.'+
+            'If you are not comfortable being naked please join another room.':'Put some clothes on, you are entering a non-naked room!');
+            const buttonText = (this.currentRoomId==='dasdsa')?'OK I\'m naked, let me in':'OK I\'m decent, let me in';
+            anyRoomWarnings.push(<Container><Alert key='nakedWarning' variant="warning">
+                {text}</Alert>
+                <Button variant="primary" onClick={() => this.changeRooms(this.currentRoomId, false)}>{buttonText}</Button></Container>);
+        }
+        return (<Container fluid>
+            <Row>
+                <Button variant="primary" onClick={() => this.leaveParty()}>Leave Party</Button>
+            </Row>
+            <Row>
+                <Col>
+                    <Card style={{ width: '80%' }}>
+                        <Card.Header>{this.state.currentRoom}</Card.Header>
+                        <Card.Body>
+                            {anyRoomWarnings}
+                            <div id="meet" style={{ width: '100%' }} />
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col md="auto"><Container fluid>{otherRoomsCards}</Container></Col>
+            </Row>
+
+        </Container>);
+    }
+}
