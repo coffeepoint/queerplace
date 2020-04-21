@@ -7,114 +7,66 @@ import Col from 'react-bootstrap/Col';
 import Alert from 'react-bootstrap/Alert';
 import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
-import JitsiMeetJS from '../jitsi-meet-js';
 import JitsiMeetExternalAPI from '../jitsi-external';
+import Actor from '../middleware/Actor';
+import JitsiActorSystem from '../middleware/JitsiActorSystem';
 import roomConfig from '../roomConfig';
 
 
+export class StateActor extends Actor {
+
+    constructor(key, rooms) {
+        super(key);
+        this.rooms = rooms;
+    }
+
+    onMessage(userMap) {
+        this.rooms.userMap = userMap;
+        this.rooms.updateState();
+    }
+
+}
+
+export class RoomActor extends Actor {
+    constructor(key, rooms) {
+        super();
+        this.key = key;
+        this.rooms = rooms;
+    }
+
+    onMessage(message) {
+        this.rooms.userToRoomMap.set(message.userId, message.data);
+        this.rooms.updateState();
+    }
+}
+
 export class Rooms extends React.Component {
 
-    domain = 'meet.jit.si';
     api = null;
-    room = null;
-    connection = null;
-    currentRoomId = null;
-    userMap = new Map();
-    userToRoomMap = new Map();
-    usersToQuestion = [];
-    nakedRooms = [];
-    initialRoom = undefined;
-    rooms = [];
-    roomMap = new Map();
+    domain = 'meet.jit.si';
     passwordTried = false;
+    userToRoomMap = new Map();
+    meetingUpdateActor = undefined;
+    usersToQuestion = [];
+    initialRoom = undefined;
+    currentRoomId = null;
+    rooms = [];
+    nakedRooms = [];
+    roomMap = new Map();
+    userMap = new Map();
 
     constructor(props) {
         super(props);
         this.confirmUser.bind(this);
         this.rejectUser.bind(this);
         this.setupRooms();
-
         this.userQuestionInput = React.createRef();
         this.displayNakedRoomWarning = false;
         this.state = this.makeState();
-        // initiate Jitsi
-        const lowLevelOptions = {
-            hosts: {
-                domain: 'meet.jit.si',
-                muc: 'conference.meet.jit.si',
-            },
-            bosh: 'wss://meet.jit.si/xmpp-websocket?room=' + this.props.prefix,
-            serviceUrl: 'wss://meet.jit.si/xmpp-websocket?room=' + this.props.prefix,
-            clientNode: 'http://jitsi.org/jitsimeet',
-            websocket: 'wss://meet.jit.si/xmpp-websocket' // FIXME: use xep-0156 for that
-        };
-        const initOptions = {
-            disableAudioLevels: true
-        };
-        JitsiMeetJS.init(initOptions);
-        const that = this;
-        const connection = new JitsiMeetJS.JitsiConnection(null, null, lowLevelOptions);
-        function onConnectionSuccess() {
-            console.log('Connection Success');
-            that.room = connection.initJitsiConference(that.props.prefix, {
-                'startSilent': true,
-                openBridgeChannel: true
-            });
-            that.room.on(JitsiMeetJS.events.conference.USER_JOINED, (id, participant) => {
-                console.log('user joined ' + id + ' ' + participant.getDisplayName());
-                if (participant.getDisplayName()) {
-                    that.userMap.set(id, participant.getDisplayName());
-                }
-            });
-            that.room.on(JitsiMeetJS.events.conference.TRACK_ADDED, track => { });
-            that.room.on(JitsiMeetJS.events.conference.TRACK_REMOVED, track => {
-                console.log(`track removed!!!${track}`);
-            });
-            that.room.on(JitsiMeetJS.events.conference.USER_LEFT, id => {
-                console.log('user left ' + id);
-                that.userMap.delete(id);
-                that.userToRoomMap.delete(id);
-                that.updateState();
-            });
-            that.room.on(JitsiMeetJS.events.conference.DISPLAY_NAME_CHANGED, (id, displayName) => {
-                console.log('user ' + id + ' changed name to ' + displayName);
-                that.userMap.set(id, displayName);
-            });
-            that.room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, () => {
-                console.log('Conference Joined');
-                if (!that.passwordTried) {
-                    that.room.lock(that.props.password);
-                }
-                that.userMap.set(that.room.myUserId(), that.props.displayName);
-                that.room.setDisplayName(that.props.displayName);
-                that.changeRooms(that.initialRoom);
-            });
-            that.room.on(JitsiMeetJS.events.conference.CONFERENCE_FAILED, (errorCode) => {
-                if (errorCode === JitsiMeetJS.errors.conference.PASSWORD_REQUIRED) {
-                    if (that.passwordTried) {
-                        that.props.loginFailed();
-                    }
-                    else {
-                        that.passwordTried = true;
-                        that.room.join(that.props.password);
-                    }
-                }
-            });
-            that.room.on(JitsiMeetJS.events.conference.MESSAGE_RECEIVED, (id, roomId, ts) => {
-                console.log('Room change ' + id + ':' + that.userMap.get(id) + ' ' + roomId);
-                if (roomId==='left') {
-                    that.userMap.delete(id);
-                    that.userToRoomMap.delete(id);                  
-                }
-                else {
-                    that.userToRoomMap.set(id, roomId);
-                }
-                that.updateState();
-            });
-            that.room.join();
-        }
-        connection.addEventListener(JitsiMeetJS.events.connection.CONNECTION_ESTABLISHED, onConnectionSuccess);
-        connection.connect();
+
+        this.actorSystem = new JitsiActorSystem(new StateActor('state', this), this.props.prefix, this.props.password, this.props.displayName, 
+        ()=>this.changeRooms(this.initialRoom), ()=>this.props.loginFailed());
+        this.actorSystem.registerActor(new RoomActor('room', this));
     }
 
     setupRooms() {
@@ -131,12 +83,12 @@ export class Rooms extends React.Component {
                 this.rooms.push(room.roomId);
             }
         }
-    }
+    }    
 
     confirmUser() {
         const newUserList = [];
         for (const user of this.usersToQuestion) {
-            if (user.id != this.userQuestionInput.current.value) {
+            if (user.id !== this.userQuestionInput.current.value) {
                 newUserList.push(user);
             }
         }
@@ -147,7 +99,7 @@ export class Rooms extends React.Component {
     rejectUser() {
         const newUserList = [];
         for (const user of this.usersToQuestion) {
-            if (user.id != this.userQuestionInput.current.value) {
+            if (user.id !== this.userQuestionInput.current.value) {
                 newUserList.push(user);
             }
         }
@@ -208,7 +160,7 @@ export class Rooms extends React.Component {
                 this.api.on('participantLeft', (userWhoLeft) => {
                     const newUsersToQuestion = [];
                     for (const user of this.usersToQuestion) {
-                        if (user.id!=userWhoLeft.id) {
+                        if (user.id !== userWhoLeft.id) {
                             newUsersToQuestion.push(user);
                         }
                     }
@@ -236,7 +188,7 @@ export class Rooms extends React.Component {
             });
 
             this.api.executeCommand('displayName', this.props.displayName);
-            this.room.sendTextMessage(this.currentRoomId);
+            this.actorSystem.send('room', this.currentRoomId);
         }
         else {
             this.updateState();
@@ -249,33 +201,20 @@ export class Rooms extends React.Component {
     }
 
     leaveParty() {
-        this.room.sendTextMessage('left');
-        this.cleanUpJitsi();
         this.props.logout();
     }
 
-
-    cleanUpJitsi() {
+    componentWillUnmount() {
         if (this.api) {
             this.api.executeCommand('hangup');
             this.api.dispose();
         }
-        if (this.room) {
-            this.room.leave();
-        }
-        if (this.connection) {
-            this.connection.disconnect();
-        }
-    }
-
-
-    componentWillUnmount() {
-        this.cleanUpJitsi();
+        this.actorSystem.shutdown();
     }
 
 
     updateState() {
-        const newState = this.makeState();
+        const newState = this.makeState(this.userMap);
         this.setState(newState);
     }
 
