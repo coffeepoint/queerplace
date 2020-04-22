@@ -66,8 +66,8 @@ export class Rooms extends React.Component {
     usersToQuestion = [];
     initialRoom = undefined;
     currentRoomId = null;
+    previousRoomId = null;
     rooms = [];
-    nakedRooms = [];
     roomMap = new Map();
     userMap = new Map();
     messages = [];
@@ -91,12 +91,8 @@ export class Rooms extends React.Component {
 
     setupRooms() {
         for (const room of roomConfig) {
-            this.roomMap.set(room.roomId, room.roomName+(room.roomType==='naked'?' (Naked)':''));
-            if (room.roomType==='naked') {
-                this.nakedRooms.push(room.roomId);
-                this.rooms.push(room.roomId);
-            }
-            else if (room.roomType==='initial' && !this.initialRoom) {
+            this.roomMap.set(room.roomId, room);
+            if (room.roomType==='initial' && !this.initialRoom) {
                 this.initialRoom = room.roomId;
             }
             else {
@@ -124,7 +120,7 @@ export class Rooms extends React.Component {
             }
         }
         this.usersToQuestion = newUserList;
-        this.api.executeCommand('sendEndpointTextMessage', this.userQuestionInput.current.value, 'notnaked'); 
+        this.api.executeCommand('sendEndpointTextMessage', this.userQuestionInput.current.value, 'notcompliant'); 
         this.updateState();      
     }
 
@@ -174,6 +170,7 @@ export class Rooms extends React.Component {
         if (i > -1) {
             this.rooms[i] = this.currentRoomId;
         }
+        this.previousRoomId = this.currentRoomId;
         this.currentRoomId = roomId;
         if (this.api) {
             this.api.executeCommand('hangup');
@@ -215,7 +212,7 @@ export class Rooms extends React.Component {
             });
             this.api.on('videoConferenceJoined', () => {
                 this.api.executeCommand('password', this.props.password);
-                this.api.executeCommand('subject', this.roomMap.get(this.currentRoomId));
+                this.api.executeCommand('subject', this.roomName(this.currentRoomId));
             });
 
             this.api.executeCommand('displayName', this.props.displayName);
@@ -228,7 +225,12 @@ export class Rooms extends React.Component {
 
 
     isNakedRoom(roomId) {
-        return this.nakedRooms.includes(roomId);
+        if (roomId) {
+            return this.roomMap.get(roomId).roomType==='restricted';
+        }
+        else {
+            return false;
+        }
     }
 
     leaveParty() {
@@ -249,6 +251,16 @@ export class Rooms extends React.Component {
         this.setState(newState);
     }
 
+    roomName(roomId) {
+        if (roomId) {
+            const room= this.roomMap.get(roomId);
+            return room.roomName + (room.roomLabel?' ('+room.roomLabel+')':''); 
+        }
+        else {
+            return undefined;
+        }
+    }
+
 
     makeState() {
         const otherRooms = [];
@@ -266,13 +278,13 @@ export class Rooms extends React.Component {
             }
         });
         for (const roomId of this.rooms) {
-            otherRooms.push({ roomId: roomId, roomName: this.roomMap.get(roomId), occupants: roomUserDisplayNameMap.get(roomId) });
+            otherRooms.push({ roomId: roomId, roomName: this.roomName(roomId), occupants: roomUserDisplayNameMap.get(roomId) });
         }
         const newState = {
             "displayNakedRoomWarning": this.displayNakedRoomWarning,
             "currentRoomId": this.currentRoom,
             "usersToQuestion": this.usersToQuestion,
-            "currentRoom": this.roomMap.get(this.currentRoomId),
+            "currentRoom": this.roomName(this.currentRoomId),
             "otherRooms": otherRooms,
             "messages": this.messages
         };
@@ -300,24 +312,26 @@ export class Rooms extends React.Component {
         }
         const anyRoomWarnings = [];
         const anyRoomQuestion = [];
+        const room = this.roomMap.get(this.currentRoomId);
         if (this.state.displayNakedRoomWarning) {
-            const text = ((this.isNakedRoom(this.currentRoomId))?'Mig\'s insists that those in his room are, like him, naked. Please respect other people in the room and only enter if you are not wearing anything. '+
-            'If you are not comfortable being naked please join another room.':'Put some clothes on, you are entering a non-naked room!');
-            const buttonText = (this.isNakedRoom(this.currentRoomId))?'OK I\'m naked, let me in':'OK I\'m decent, let me in';
-            anyRoomWarnings.push(<Container><Alert key='nakedWarning' variant="warning">
+            const previousRoom = this.roomMap.get(this.previousRoomId);
+            const text = (this.isNakedRoom(this.currentRoomId))?room.roomRestrictionText:previousRoom.roomLeavingText;
+            const buttonText = (this.isNakedRoom(this.currentRoomId))?room.roomRestrictionButton:previousRoom.roomLeavingButton;
+            anyRoomWarnings.push(<Container><Alert key='roomWarning' variant="warning">
                 {text}</Alert>
                 <Button variant="primary" onClick={() => this.changeRooms(this.currentRoomId, false)}>{buttonText}</Button></Container>);
         }
         else if (this.isNakedRoom(this.currentRoomId)) {
+            const questionData = room.roomQuestion.split('%');
             const options = [];
             for (const user of this.state.usersToQuestion) {
                 options.push(<option value={user.id} >{user.displayName}</option>)
             }
             if (options.length>0) {
-                anyRoomQuestion.push(<Form inline>Is&nbsp;<Form.Group controlId="isnaked">
+            anyRoomQuestion.push(<Form inline>{questionData[0]}&nbsp;<Form.Group controlId="iscompliant">
                 <Form.Control as="select" ref={this.userQuestionInput}>
                     {options}
-                </Form.Control>&nbsp;naked?&nbsp;<Button onClick={() => this.confirmUser()}>Yes</Button><Button onClick={() => this.rejectUser()}>No</Button>
+            </Form.Control>&nbsp;{questionData[1]}&nbsp;<Button onClick={() => this.confirmUser()}>Yes</Button><Button onClick={() => this.rejectUser()}>No</Button>
             </Form.Group></Form>);
             }
         }
