@@ -66,6 +66,7 @@ export class JitsiActorSystem {
                 }
                 that.userMap.set(that.room.myUserId(), that.displayName);
                 that.room.setDisplayName(that.displayName);
+                that.updateState();
                 systemUp();
             });
             that.room.on(JitsiMeetJS.events.conference.CONFERENCE_FAILED, (errorCode) => {

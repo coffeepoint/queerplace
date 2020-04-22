@@ -1,6 +1,7 @@
 import React from 'react';
 import Container from 'react-bootstrap/Container';
 import Button from 'react-bootstrap/Button';
+import InputGroup from 'react-bootstrap/InputGroup';
 import Card from 'react-bootstrap/Card';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
@@ -11,6 +12,9 @@ import JitsiMeetExternalAPI from '../jitsi-external';
 import Actor from '../middleware/Actor';
 import JitsiActorSystem from '../middleware/JitsiActorSystem';
 import roomConfig from '../roomConfig';
+import './Rooms.css';
+
+import 'react-chat-widget/lib/styles.css';
 
 
 export class StateActor extends Actor {
@@ -40,6 +44,20 @@ export class RoomActor extends Actor {
     }
 }
 
+export class MessageActor extends Actor {
+    constructor(key, rooms) {
+        super();
+        this.key = key;
+        this.rooms = rooms;
+    }
+
+    onMessage(message) {
+        console.log('queerplace: '+message.userId+' '+message.data);
+        this.rooms.messages.push({name: this.rooms.userMap.get(message.userId), message: message.data});
+        this.rooms.updateState();
+    }
+}
+
 export class Rooms extends React.Component {
 
     api = null;
@@ -54,19 +72,23 @@ export class Rooms extends React.Component {
     nakedRooms = [];
     roomMap = new Map();
     userMap = new Map();
+    messages = [];
 
     constructor(props) {
         super(props);
         this.confirmUser.bind(this);
         this.rejectUser.bind(this);
+        this.sendMessage.bind(this);
         this.setupRooms();
         this.userQuestionInput = React.createRef();
+        this.messageInput = React.createRef();
         this.displayNakedRoomWarning = false;
         this.state = this.makeState();
 
         this.actorSystem = new JitsiActorSystem(new StateActor('state', this), this.props.prefix, this.props.password, this.props.displayName, 
         ()=>this.changeRooms(this.initialRoom), ()=>this.props.loginFailed());
         this.actorSystem.registerActor(new RoomActor('room', this));
+        this.actorSystem.registerActor(new MessageActor('message', this));
     }
 
     setupRooms() {
@@ -106,6 +128,11 @@ export class Rooms extends React.Component {
         this.usersToQuestion = newUserList;
         this.api.executeCommand('sendEndpointTextMessage', this.userQuestionInput.current.value, 'notnaked'); 
         this.updateState();      
+    }
+
+    sendMessage() {
+        this.actorSystem.send('message', this.messageInput.current.value);
+        this.messageInput.current.value = '';
     }
 
     options() {
@@ -242,7 +269,8 @@ export class Rooms extends React.Component {
             "currentRoomId": this.currentRoom,
             "usersToQuestion": this.usersToQuestion,
             "currentRoom": this.roomMap.get(this.currentRoomId),
-            "otherRooms": otherRooms
+            "otherRooms": otherRooms,
+            "messages": this.messages
         };
         return newState;
     }
@@ -289,6 +317,10 @@ export class Rooms extends React.Component {
             </Form.Group></Form>);
             }
         }
+        const messageItems = [];
+        for (const message of this.state.messages) {
+            messageItems.push(<ListGroup.Item className="p-0 m-0"><b>{message.name}:</b>&nbsp;{message.message}</ListGroup.Item>)
+        }
         return (<Container fluid>
             <Row>
                 <Button variant="primary" onClick={() => this.leaveParty()}>Leave Party</Button>
@@ -301,9 +333,23 @@ export class Rooms extends React.Component {
                             {anyRoomWarnings}
                             <div id="meet" style={{ width: '100%' }} />
                             {anyRoomQuestion}
+                           
                         </Card.Body>
                     </Card>
+                    <Card style={{ width: '80%' }}>
+                        <Card.Header>Party Chat</Card.Header>
+                        <Card.Body className="chat">
+    
+                        <ListGroup className="p-0 m-0">{messageItems}</ListGroup>
 
+                        <InputGroup>
+                        
+                <Form.Control as="input" ref={this.messageInput} type="text" placeholder="Type a message"/>
+                <Button onClick={() => this.sendMessage()}>Send</Button>
+                
+            </InputGroup> 
+                        </Card.Body>
+                    </Card>
                 </Col>
                 <Col md="auto"><Container fluid>{otherRoomsCards}</Container></Col>
             </Row>
