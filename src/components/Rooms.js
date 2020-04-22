@@ -14,8 +14,6 @@ import JitsiActorSystem from '../middleware/JitsiActorSystem';
 import roomConfig from '../roomConfig';
 import './Rooms.css';
 
-import 'react-chat-widget/lib/styles.css';
-
 
 export class StateActor extends Actor {
 
@@ -133,6 +131,12 @@ export class Rooms extends React.Component {
     sendMessage() {
         this.actorSystem.send('message', this.messageInput.current.value);
         this.messageInput.current.value = '';
+    }
+
+    maybeSendMessage(target) {
+        if (target.charCode === 13) {
+            this.sendMessage();
+        }
     }
 
     options() {
@@ -318,8 +322,10 @@ export class Rooms extends React.Component {
             }
         }
         const messageItems = [];
+        var i = 0;
         for (const message of this.state.messages) {
-            messageItems.push(<ListGroup.Item className="p-0 m-0"><b>{message.name}:</b>&nbsp;{message.message}</ListGroup.Item>)
+            messageItems.push(<ListGroup.Item key={i} className="p-0 m-0"><b>{message.name}:</b>&nbsp;{message.message}</ListGroup.Item>);
+            ++i;
         }
         return (<Container fluid>
             <Row>
@@ -344,7 +350,7 @@ export class Rooms extends React.Component {
 
                         <InputGroup>
                         
-                <Form.Control as="input" ref={this.messageInput} type="text" placeholder="Type a message"/>
+                <Form.Control as="input" ref={this.messageInput} type="text" placeholder="Type a message" onKeyPress={(target)=>this.maybeSendMessage(target)}/>
                 <Button onClick={() => this.sendMessage()}>Send</Button>
                 
             </InputGroup> 
