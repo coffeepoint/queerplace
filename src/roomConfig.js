@@ -17,7 +17,7 @@ export default [
         roomRestrictionButton: 'OK I\'m wearing a hat, let me in',
         roomLeavingText: 'Take off your hat!',
         roomLeavingButton: 'OK I\'m not wearing a hat, let me in',
-        roomQuestion: 'Is % wearing a hat?
+        roomQuestion: 'Is % wearing a hat?'
     },
     {
         roomId: '3',
