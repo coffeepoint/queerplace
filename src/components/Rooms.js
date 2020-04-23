@@ -113,9 +113,7 @@ export class Rooms extends React.Component {
             if (room.roomType==='initial' && !this.initialRoom) {
                 this.initialRoom = room.roomId;
             }
-            else {
-                this.rooms.push(room.roomId);
-            }
+            this.rooms.push(room.roomId);
         }
     }    
 
@@ -200,11 +198,6 @@ export class Rooms extends React.Component {
             this.displayRoomWarning = false;
         }
         console.log('@@@ ' + roomId);
-        const i = this.rooms.indexOf(roomId);
-        console.log('@@@ ' + i);
-        if (i > -1) {
-            this.rooms[i] = this.currentRoomId;
-        }
         this.previousRoomId = this.currentRoomId;
         this.currentRoomId = roomId;
         if (this.api) {
@@ -335,6 +328,7 @@ export class Rooms extends React.Component {
                     occupantItems.push(<ListGroup.Item className="p-0 m-0">{occupant}</ListGroup.Item>);
                 }
             }
+            const maybeButton = (room.roomId!==this.currentRoomId)?<Button variant="primary" onClick={() => this.changeRooms(room.roomId)}>Enter</Button>:undefined;
             otherRoomsCards.push(<Row key={room.roomId}><Card style={{ width: '200px' }}>
                 <Card.Header as="h6">{room.roomName}</Card.Header>
                 <Card.Img src="https://storiescdn.hornet.com/wp-content/uploads/2017/03/06131906/fire_island.jpg" />
@@ -342,7 +336,7 @@ export class Rooms extends React.Component {
                     <ListGroup className="p-0 m-0">{occupantItems}</ListGroup>
                 </Card.Body>
 
-                <Button variant="primary" onClick={() => this.changeRooms(room.roomId)}>Enter</Button>
+                {maybeButton}
             </Card></Row>);
         }
         const anyRoomWarnings = [];
