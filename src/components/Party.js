@@ -4,7 +4,6 @@ import { LetMeIn } from './LetMeIn';
 import { Rooms } from "./Rooms";
 import Alert from 'react-bootstrap/Alert';
 
-
 export class Party extends React.Component {
 
   constructor(props) {
@@ -13,15 +12,30 @@ export class Party extends React.Component {
       displayName: undefined,
       partyName: undefined,
       password: undefined,
+      saveDetails: undefined,
       setup: false
     };
+
+    if (localStorage.getItem('displayName') !== "") {
+      this.state.displayName = localStorage.getItem('displayName');
+    }
+    if (localStorage.getItem('partyName') !== "") {
+      this.state.partyName = localStorage.getItem('partyName');
+    }
+    if (localStorage.getItem('password') !== "") {
+      this.state.password = localStorage.getItem('password');
+    }
+    if (localStorage.getItem('saveDetails') !== "") {
+      this.state.saveDetails = localStorage.getItem('saveDetails');
+    }
+
     this.enterParty = this.enterParty.bind(this);
     this.loginFailed = this.loginFailed.bind(this);
     this.logout = this.logout.bind(this);
   }
 
 
-  enterParty(displayName, partyName, password) {
+  enterParty(displayName, partyName, password, saveDetails) {
     if (this.definedAndOfNoneZeroLength(displayName) && this.definedAndOfNoneZeroLength(partyName) && this.definedAndOfNoneZeroLength(password)) {
       this.setState({
         displayName: displayName,
@@ -29,6 +43,21 @@ export class Party extends React.Component {
         password: password,
         setup: true
       });
+
+      if (saveDetails === true) {
+        localStorage.setItem('saveDetails', "true");
+        this.setState({saveDetails: "true"});
+      } else {
+        localStorage.setItem('saveDetails', "false");
+      }
+
+      if (saveDetails) {
+        localStorage.setItem('displayName', displayName);
+        localStorage.setItem('partyName', partyName);
+        localStorage.setItem('password', password);
+      } else {
+        localStorage.clear();
+      }
     }
     else {
       this.setState({
@@ -36,7 +65,7 @@ export class Party extends React.Component {
         partyName: partyName,
         password: password,
         setup: false,
-        message: 'All fields are required'
+        message: 'All fields are required',
       });
     }
   }
@@ -60,13 +89,18 @@ export class Party extends React.Component {
 
 
   logout() {
+    if (this.state.saveDetails !== "true") {
+      this.setState({
+        displayName: undefined,
+        partyName: undefined,
+        password: undefined,
+      });
+    }
+    
     this.setState({
-      displayName: undefined,
-      partyName: undefined,
-      password: undefined,
       setup: false,
-      message: undefined
-    });
+      message: undefined,
+    })
   }
 
 
@@ -79,7 +113,13 @@ export class Party extends React.Component {
         For questions about Jitsi security and privacy see <a href="https://jitsi.org/blog/security/">https://jitsi.org/blog/security/</a>. When only two people are in 
         a room, video and audio is encrypted end to end between the two occupant's computers. When more people are in the room, video and audio is encypted to and 
         from meet.jit.si. Data is always encrypted in transit.</Alert>
-        <LetMeIn enterParty={this.enterParty} name={this.state.displayName} partyName={this.state.party} message={this.state.message} />
+        <LetMeIn 
+          enterParty={this.enterParty} 
+          message={this.state.message} 
+          name={this.state.displayName} 
+          partyName={this.state.partyName} 
+          password={this.state.password} 
+          saveDetails={this.state.saveDetails === "true"} />
       </Container>);
     }
     else {
