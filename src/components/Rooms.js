@@ -12,7 +12,10 @@ import JitsiMeetExternalAPI from '../jitsi-external';
 import Actor from '../middleware/Actor';
 import JitsiActorSystem from '../middleware/JitsiActorSystem';
 import roomConfig from '../roomConfig';
+import migsReplies from '../MigsReplies';
 import './Rooms.css';
+import ScrollToBottom from 'react-scroll-to-bottom';
+
 
 
 export class StateActor extends Actor {
@@ -56,6 +59,19 @@ export class MessageActor extends Actor {
     }
 }
 
+export class MigsActor extends Actor {
+    constructor(key, rooms) {
+        super();
+        this.key = key;
+        this.rooms = rooms;
+    }
+
+    onMessage(message) {
+        this.rooms.messages.push({name: 'Migs', message: message.data});
+        this.rooms.updateState();
+    }    
+}
+
 export class Rooms extends React.Component {
 
     api = null;
@@ -80,6 +96,7 @@ export class Rooms extends React.Component {
         this.setupRooms();
         this.userQuestionInput = React.createRef();
         this.messageInput = React.createRef();
+        this.lastMessageItem = React.createRef();
         this.displayNakedRoomWarning = false;
         this.state = this.makeState();
 
@@ -87,6 +104,7 @@ export class Rooms extends React.Component {
         ()=>this.changeRooms(this.initialRoom), ()=>this.props.loginFailed());
         this.actorSystem.registerActor(new RoomActor('room', this));
         this.actorSystem.registerActor(new MessageActor('message', this));
+        this.actorSystem.registerActor(new MigsActor('migs',this));
     }
 
     setupRooms() {
@@ -125,8 +143,25 @@ export class Rooms extends React.Component {
     }
 
     sendMessage() {
-        this.actorSystem.send('message', this.messageInput.current.value);
-        this.messageInput.current.value = '';
+        const messageText=this.messageInput.current.value; 
+        if (messageText && messageText.trim().length>0) {
+            this.actorSystem.send('message', messageText);
+            this.messageInput.current.value = '';
+            this.applyBots(messageText);
+        }
+    }
+
+    getRandomInt(max) {
+        return Math.floor(Math.random() * Math.floor(max));
+    }
+
+    applyBots(text) {
+        const migsReplyId = this.getRandomInt(migsReplies.length);
+        const cleanedText = text.toLowerCase().replace(/[ ]+/g,' ').replace(/[^0-9a-z ]/g,'').trim();
+        if (cleanedText==='wheres migs' || cleanedText === 'where is migs') {
+            setTimeout(()=>this.actorSystem.send('migs',migsReplies[migsReplyId]), 1000);
+            
+        }
     }
 
     maybeSendMessage(target) {
@@ -339,8 +374,10 @@ export class Rooms extends React.Component {
         var i = 0;
         for (const message of this.state.messages) {
             messageItems.push(<ListGroup.Item key={i} className="p-0 m-0"><b>{message.name}:</b>&nbsp;{message.message}</ListGroup.Item>);
+
             ++i;
         }
+
         return (<Container fluid>
             <Row>
                 <Button variant="primary" onClick={() => this.leaveParty()}>Leave Party</Button>
@@ -359,9 +396,9 @@ export class Rooms extends React.Component {
                     <Card style={{ width: '80%' }}>
                         <Card.Header>Party Chat</Card.Header>
                         <Card.Body className="chat">
-    
-                        <ListGroup className="p-0 m-0">{messageItems}</ListGroup>
-
+                        <ScrollToBottom className="messageChat">
+                        <ListGroup ref={this.lastMessageItem} className="p-0 m-0">{messageItems}</ListGroup>
+                        </ScrollToBottom>
                         <InputGroup>
                         
                 <Form.Control as="input" ref={this.messageInput} type="text" placeholder="Type a message" onKeyPress={(target)=>this.maybeSendMessage(target)}/>
