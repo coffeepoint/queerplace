@@ -97,7 +97,7 @@ export class Rooms extends React.Component {
         this.userQuestionInput = React.createRef();
         this.messageInput = React.createRef();
         this.lastMessageItem = React.createRef();
-        this.displayNakedRoomWarning = false;
+        this.displayRoomWarning = false;
         this.state = this.makeState();
 
         this.actorSystem = new JitsiActorSystem(new StateActor('state', this), this.props.prefix, this.props.password, this.props.displayName, 
@@ -193,11 +193,11 @@ export class Rooms extends React.Component {
 
 
     changeRooms(roomId, askForConfirm = true) {
-        if ((this.isNakedRoom(roomId) || this.isNakedRoom(this.currentRoomId)) && askForConfirm) {
-            this.displayNakedRoomWarning = true;
+        if ((this.isRestrictedRoom(roomId) || this.isRestrictedRoom(this.currentRoomId)) && askForConfirm) {
+            this.displayRoomWarning = true;
         }
         else {
-            this.displayNakedRoomWarning = false;
+            this.displayRoomWarning = false;
         }
         console.log('@@@ ' + roomId);
         const i = this.rooms.indexOf(roomId);
@@ -211,10 +211,10 @@ export class Rooms extends React.Component {
             this.api.executeCommand('hangup');
             this.api.dispose();
         }
-        if (!this.displayNakedRoomWarning) {
+        if (!this.displayRoomWarning) {
             console.log('@@@ ' + this.options());
             this.api = new JitsiMeetExternalAPI(this.domain, this.options());
-            if (this.isNakedRoom(this.currentRoomId)) {
+            if (this.isRestrictedRoom(this.currentRoomId)) {
                 this.api.on('participantJoined', (user) => {
                     console.log('&& joined '+user.id);
                     this.usersToQuestion.push(user);
@@ -238,7 +238,7 @@ export class Rooms extends React.Component {
                 this.api.on('endpointTextMessageReceived', (data) => {
                     this.api.executeCommand('hangup');
                     this.api.dispose();
-                    this.displayNakedRoomWarning = true;
+                    this.displayRoomWarning = true;
                     this.updateState();
                 });
             }
@@ -259,7 +259,7 @@ export class Rooms extends React.Component {
     }
 
 
-    isNakedRoom(roomId) {
+    isRestrictedRoom(roomId) {
         if (roomId) {
             return this.roomMap.get(roomId).roomType==='restricted';
         }
@@ -316,7 +316,7 @@ export class Rooms extends React.Component {
             otherRooms.push({ roomId: roomId, roomName: this.roomName(roomId), occupants: roomUserDisplayNameMap.get(roomId) });
         }
         const newState = {
-            "displayNakedRoomWarning": this.displayNakedRoomWarning,
+            "displayRoomWarning": this.displayRoomWarning,
             "currentRoomId": this.currentRoom,
             "usersToQuestion": this.usersToQuestion,
             "currentRoom": this.roomName(this.currentRoomId),
@@ -348,15 +348,15 @@ export class Rooms extends React.Component {
         const anyRoomWarnings = [];
         const anyRoomQuestion = [];
         const room = this.roomMap.get(this.currentRoomId);
-        if (this.state.displayNakedRoomWarning) {
+        if (this.state.displayRoomWarning) {
             const previousRoom = this.roomMap.get(this.previousRoomId);
-            const text = (this.isNakedRoom(this.currentRoomId))?room.roomRestrictionText:previousRoom.roomLeavingText;
-            const buttonText = (this.isNakedRoom(this.currentRoomId))?room.roomRestrictionButton:previousRoom.roomLeavingButton;
+            const text = (this.isRestrictedRoom(this.currentRoomId))?room.roomRestrictionText:previousRoom.roomLeavingText;
+            const buttonText = (this.isRestrictedRoom(this.currentRoomId))?room.roomRestrictionButton:previousRoom.roomLeavingButton;
             anyRoomWarnings.push(<Container><Alert key='roomWarning' variant="warning">
                 {text}</Alert>
                 <Button variant="primary" onClick={() => this.changeRooms(this.currentRoomId, false)}>{buttonText}</Button></Container>);
         }
-        else if (this.isNakedRoom(this.currentRoomId)) {
+        else if (this.isRestrictedRoom(this.currentRoomId)) {
             const questionData = room.roomQuestion.split('%');
             const options = [];
             for (const user of this.state.usersToQuestion) {
