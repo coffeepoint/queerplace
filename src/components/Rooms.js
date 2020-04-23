@@ -379,38 +379,34 @@ export class Rooms extends React.Component {
         }
 
         return (<Container fluid>
-            <Row>
-                <Button variant="primary" onClick={() => this.leaveParty()}>Leave Party</Button>
+            <Row id="party-controls">
+                <Button variant="primary" className="warn outside" onClick={() => this.leaveParty()}>Leave Party</Button>
             </Row>
             <Row>
+                <Col md="auto"><Container fluid>{otherRoomsCards}</Container></Col>
                 <Col>
-                    <Card style={{ width: '80%' }}>
+                    <Card style={{ width: '100%' }}>
                         <Card.Header>{this.state.currentRoom}</Card.Header>
                         <Card.Body>
                             {anyRoomWarnings}
                             <div id="meet" style={{ width: '100%' }} />
                             {anyRoomQuestion}
-                           
                         </Card.Body>
                     </Card>
-                    <Card style={{ width: '80%' }}>
+                    <Card style={{ width: '100%%' }}>
                         <Card.Header>Party Chat</Card.Header>
                         <Card.Body className="chat">
-                        <ScrollToBottom className="messageChat">
-                        <ListGroup ref={this.lastMessageItem} className="p-0 m-0">{messageItems}</ListGroup>
-                        </ScrollToBottom>
-                        <InputGroup>
-                        
-                <Form.Control as="input" ref={this.messageInput} type="text" placeholder="Type a message" onKeyPress={(target)=>this.maybeSendMessage(target)}/>
-                <Button onClick={() => this.sendMessage()}>Send</Button>
-                
-            </InputGroup> 
+                            <ScrollToBottom className="messageChat">
+                                <ListGroup ref={this.lastMessageItem} className="p-0 m-0">{messageItems}</ListGroup>
+                            </ScrollToBottom>
+                            <InputGroup>
+                                <Form.Control as="input" ref={this.messageInput} type="text" placeholder="Type a message" onKeyPress={(target)=>this.maybeSendMessage(target)}/>
+                                <Button onClick={() => this.sendMessage()}>Send</Button>
+                            </InputGroup> 
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col md="auto"><Container fluid>{otherRoomsCards}</Container></Col>
             </Row>
-
         </Container>);
     }
 }
