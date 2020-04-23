@@ -18,7 +18,11 @@ export class LetMeIn extends React.Component {
     if (this.props.message) {
       alerts.push(<Alert key='message' variant='danger'>{this.props.message}</Alert>);
     }
-    return (<Form>
+    return (<Form onSubmit={() => this.props.enterParty(
+      this.nameInput.current.value, 
+      this.partyInput.current.value, 
+      this.passwordInput.current.value, 
+      this.saveDetailsInput.current.checked)}>
       <Form.Group controlId="YourName">
         <Form.Label>Your Name</Form.Label>
         <Form.Control ref={this.nameInput} type="text" placeholder="Your Name" defaultValue={this.props.name} />
@@ -41,11 +45,7 @@ export class LetMeIn extends React.Component {
         <Form.Check custom type="switch" ref={this.saveDetailsInput} defaultChecked={this.props.saveDetails} label="Save Party Details and Password"/>
       </Form.Group>
       {alerts}
-      <Button variant="primary" onClick={() => this.props.enterParty(
-        this.nameInput.current.value, 
-        this.partyInput.current.value, 
-        this.passwordInput.current.value, 
-        this.saveDetailsInput.current.checked)}>
+      <Button variant="primary" type="submit">
         Let's Party!
       </Button>
     </Form>);

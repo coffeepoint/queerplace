@@ -49,6 +49,7 @@ export class Party extends React.Component {
         this.setState({saveDetails: "true"});
       } else {
         localStorage.setItem('saveDetails', "false");
+        this.setState({saveDetails: "false"});
       }
 
       if (saveDetails) {
@@ -96,11 +97,11 @@ export class Party extends React.Component {
         password: undefined,
       });
     }
-    
+
     this.setState({
       setup: false,
       message: undefined,
-    })
+    });
   }
 
 
