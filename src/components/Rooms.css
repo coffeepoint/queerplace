@@ -1,1 +1,18 @@
 .messageChat {height: 250px}
+.card {
+    margin-bottom: 2rem;
+}
+
+.btn.warn {
+    background-color: #ff7b00;
+    border-color: transparent;
+    margin: 1rem;
+}
+
+.btn.warn:hover {
+    background-color: red;
+}
+
+#party-controls {
+    justify-content: right;
+}
