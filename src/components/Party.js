@@ -12,21 +12,11 @@ export class Party extends React.Component {
       displayName: undefined,
       partyName: undefined,
       password: undefined,
-      saveDetails: undefined,
       setup: false
     };
 
     if (localStorage.getItem('displayName') !== "") {
       this.state.displayName = localStorage.getItem('displayName');
-    }
-    if (localStorage.getItem('partyName') !== "") {
-      this.state.partyName = localStorage.getItem('partyName');
-    }
-    if (localStorage.getItem('password') !== "") {
-      this.state.password = localStorage.getItem('password');
-    }
-    if (localStorage.getItem('saveDetails') !== "") {
-      this.state.saveDetails = localStorage.getItem('saveDetails');
     }
 
     this.enterParty = this.enterParty.bind(this);
@@ -35,7 +25,7 @@ export class Party extends React.Component {
   }
 
 
-  enterParty(displayName, partyName, password, saveDetails) {
+  enterParty(displayName, partyName, password) {
     if (this.definedAndOfNoneZeroLength(displayName) && this.definedAndOfNoneZeroLength(partyName) && this.definedAndOfNoneZeroLength(password)) {
       this.setState({
         displayName: displayName,
@@ -43,23 +33,7 @@ export class Party extends React.Component {
         password: password,
         setup: true
       });
-
-      if (saveDetails === true) {
-        localStorage.setItem('saveDetails', "true");
-        this.setState({saveDetails: "true"});
-      } else {
-        localStorage.setItem('saveDetails', "false");
-      }
-
-      if (saveDetails) {
-        localStorage.setItem('displayName', displayName);
-        localStorage.setItem('partyName', partyName);
-        localStorage.setItem('password', password);
-      } else {
-        localStorage.clear();
-      }
-    }
-    else {
+    } else {
       this.setState({
         displayName: displayName,
         partyName: partyName,
@@ -67,6 +41,9 @@ export class Party extends React.Component {
         setup: false,
         message: 'All fields are required',
       });
+    }
+    if (this.definedAndOfNoneZeroLength(displayName)) {
+      localStorage.setItem('displayName', displayName);
     }
   }
 
@@ -89,18 +66,12 @@ export class Party extends React.Component {
 
 
   logout() {
-    if (this.state.saveDetails !== "true") {
-      this.setState({
-        displayName: undefined,
-        partyName: undefined,
-        password: undefined,
-      });
-    }
-    
     this.setState({
+      partyName: undefined,
+      password: undefined,
       setup: false,
       message: undefined,
-    })
+    });
   }
 
 
@@ -118,8 +89,7 @@ export class Party extends React.Component {
           message={this.state.message} 
           name={this.state.displayName} 
           partyName={this.state.partyName} 
-          password={this.state.password} 
-          saveDetails={this.state.saveDetails === "true"} />
+          password={this.state.password} />
       </Container>);
     }
     else {
