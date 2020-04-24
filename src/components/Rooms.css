@@ -14,5 +14,5 @@
 }
 
 #party-controls {
-    justify-content: right;
+  flex-direction: row-reverse;
 }

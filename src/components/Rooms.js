@@ -207,6 +207,7 @@ export class Rooms extends React.Component {
         if (!this.displayRoomWarning) {
             console.log('@@@ ' + this.options());
             this.api = new JitsiMeetExternalAPI(this.domain, this.options());
+            this.scrollToTop();
             if (this.isRestrictedRoom(this.currentRoomId)) {
                 this.api.on('participantJoined', (user) => {
                     console.log('&& joined '+user.id);
@@ -248,8 +249,16 @@ export class Rooms extends React.Component {
         }
         else {
             this.updateState();
+            this.scrollToTop();
         }
     }
+
+    scrollToTop() {
+        window.scrollTo({
+          top: 0,
+          behavior: "smooth"
+        });
+      }
 
 
     isRestrictedRoom(roomId) {
