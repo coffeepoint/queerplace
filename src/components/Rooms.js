@@ -69,7 +69,7 @@ export class MigsActor extends Actor {
     onMessage(message) {
         this.rooms.messages.push({name: 'Migs', message: message.data});
         this.rooms.updateState();
-    }    
+    }
 }
 
 export class Rooms extends React.Component {
@@ -100,7 +100,7 @@ export class Rooms extends React.Component {
         this.displayRoomWarning = false;
         this.state = this.makeState();
 
-        this.actorSystem = new JitsiActorSystem(new StateActor('state', this), this.props.prefix, this.props.password, this.props.displayName, 
+        this.actorSystem = new JitsiActorSystem(new StateActor('state', this), this.props.prefix, this.props.password, this.props.displayName,
         ()=>this.changeRooms(this.initialRoom), ()=>this.props.loginFailed());
         this.actorSystem.registerActor(new RoomActor('room', this));
         this.actorSystem.registerActor(new MessageActor('message', this));
@@ -115,7 +115,7 @@ export class Rooms extends React.Component {
             }
             this.rooms.push(room.roomId);
         }
-    }    
+    }
 
     confirmUser() {
         const newUserList = [];
@@ -136,12 +136,12 @@ export class Rooms extends React.Component {
             }
         }
         this.usersToQuestion = newUserList;
-        this.api.executeCommand('sendEndpointTextMessage', this.userQuestionInput.current.value, 'notcompliant'); 
-        this.updateState();      
+        this.api.executeCommand('sendEndpointTextMessage', this.userQuestionInput.current.value, 'notcompliant');
+        this.updateState();
     }
 
     sendMessage() {
-        const messageText=this.messageInput.current.value; 
+        const messageText=this.messageInput.current.value;
         if (messageText && messageText.trim().length>0) {
             this.actorSystem.send('message', messageText);
             this.messageInput.current.value = '';
@@ -158,7 +158,7 @@ export class Rooms extends React.Component {
         const cleanedText = text.toLowerCase().replace(/[ ]+/g,' ').replace(/[^0-9a-z ]/g,'').trim();
         if (cleanedText==='wheres migs' || cleanedText === 'where is migs') {
             setTimeout(()=>this.actorSystem.send('migs',migsReplies[migsReplyId]), 1000);
-            
+
         }
     }
 
@@ -291,7 +291,7 @@ export class Rooms extends React.Component {
     roomName(roomId) {
         if (roomId) {
             const room= this.roomMap.get(roomId);
-            return room.roomName + (room.roomLabel?' ('+room.roomLabel+')':''); 
+            return room.roomName + (room.roomLabel?' ('+room.roomLabel+')':'');
         }
         else {
             return undefined;
@@ -303,7 +303,7 @@ export class Rooms extends React.Component {
         const otherRooms = [];
         const roomUserDisplayNameMap = new Map();
         this.userToRoomMap.forEach((room, userId, map) => {
-        
+
             const displayName = this.userMap.get(userId);
             if (displayName && displayName.trim().length>0) {
                 if (roomUserDisplayNameMap.has(room)) {
@@ -326,6 +326,20 @@ export class Rooms extends React.Component {
             "messages": this.messages
         };
         return newState;
+    }
+
+    escapeHtml(unsafe) {
+        return unsafe
+          .replace(/&/g, " &amp;")
+          .replace(/</g, " &lt;")
+          .replace(/>/g, " &gt;")
+          .replace(/"/g, " &quot;")
+          .replace(/'/g, " &#039;");
+    }
+
+    convertTextToLinks(text) {
+        const exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#/%?=~_|!:,.;]*[-A-Z0-9+&@#/%=~_|])/ig;
+        return this.escapeHtml(text).replace(exp,"<a rel=\"noopener noreferrer\" target=\"_blank\" href='$1'>$1</a>").replace(/ &/g, '&');
     }
 
     render() {
@@ -376,7 +390,7 @@ export class Rooms extends React.Component {
         const messageItems = [];
         var i = 0;
         for (const message of this.state.messages) {
-            messageItems.push(<ListGroup.Item key={i} className="p-0 m-0"><b>{message.name}:</b>&nbsp;{message.message}</ListGroup.Item>);
+            messageItems.push(<ListGroup.Item dangerouslySetInnerHTML={{ __html: `<b>${message.name}:</b>&nbsp;${this.convertTextToLinks(message.message)}`}} key={i} className="p-0 m-0"></ListGroup.Item>);
 
             ++i;
         }
@@ -405,7 +419,7 @@ export class Rooms extends React.Component {
                             <InputGroup>
                                 <Form.Control as="input" ref={this.messageInput} type="text" placeholder="Type a message" onKeyPress={(target)=>this.maybeSendMessage(target)}/>
                                 <Button onClick={() => this.sendMessage()}>Send</Button>
-                            </InputGroup> 
+                            </InputGroup>
                         </Card.Body>
                     </Card>
                 </Col>
