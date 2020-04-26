@@ -45,6 +45,10 @@ export class JitsiActorSystem {
                     that.userMap.set(id, participant.getDisplayName());
                     that.updateState();
                 }
+                // resend my room location for the new joiner as jitsi chat history is limited
+                if (id!==that.room.myUserId()) {
+                    that.send('room', that.meetingUpdateActor.rooms.currentRoomId);
+                }
             });
             that.room.on(JitsiMeetJS.events.conference.TRACK_ADDED, track => { });
             that.room.on(JitsiMeetJS.events.conference.TRACK_REMOVED, track => {
@@ -102,6 +106,7 @@ export class JitsiActorSystem {
 
     registerActor(actor) {
         this.actorMap.set(actor.key, actor);
+        actor.actorSystem = this;
     }
 
     updateState() {
