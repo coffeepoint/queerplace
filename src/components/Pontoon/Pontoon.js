@@ -4,7 +4,6 @@ import Button from 'react-bootstrap/Button';
 import Card from 'react-bootstrap/Card';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import ListGroup from 'react-bootstrap/ListGroup';
 import Form from 'react-bootstrap/Form';
 import yourTurnMp3 from '../../assets/yourturn.mp3'
 import './Pontoon.css';
@@ -77,7 +76,7 @@ export class Pontoon extends React.Component {
         else if (this.props.pontoonBotActor.state==='play') {
             const yourHand=[];
             for (const playingCard of this.props.pontoonBotActor.hand) {
-                yourHand.push(<img id='playing-card'  src={'cards/'+playingCard.substring(1)+playingCard.charAt(0)+'.svg'} width='100' />);
+                yourHand.push(<img id='playing-card' alt={playingCard} src={'cards/'+playingCard.substring(1)+playingCard.charAt(0)+'.svg'} width='100' />);
             }
             const actions = [];
             if (this.props.pontoonBotActor.myturn) {
@@ -90,7 +89,7 @@ export class Pontoon extends React.Component {
             for (const playerId of this.props.pontoonBotActor.playerOrder) {
                 const faceDownCards = [];
                 for (var i=0; i<this.props.pontoonBotActor.players.get(playerId).cards; ++i) {
-                    faceDownCards.push(<img id='playing-card'  src={'cards/RED_BACK.svg'} width='50' />)
+                    faceDownCards.push(<img id='playing-card'  alt='Face Down Card' src={'cards/RED_BACK.svg'} width='50' />)
                 }
                 playerList.push(<Row className={this.props.pontoonBotActor.players.get(playerId).state!=='playing'?'not-current-player':''}>
                     <Col>{this.getUserDisplayName(playerId)}</Col> 
@@ -115,7 +114,7 @@ export class Pontoon extends React.Component {
             for (const player of this.props.pontoonBotActor.playerResults) {
                 const hand = [];
                 for (const playingCard of player.hand.split(',')) {
-                    hand.push(<img id='playing-card' src={'cards/'+playingCard.substring(1)+playingCard.charAt(0)+'.svg'} width='50' />);
+                    hand.push(<img id='playing-card' alt={playingCard} src={'cards/'+playingCard.substring(1)+playingCard.charAt(0)+'.svg'} width='50' />);
                 }
                 playerList.push(<Row><Col>{this.getUserDisplayName(player.player)} {player.winner?'wins with ':''} {player.bust?'is bust!':player.total}</Col><Col>{hand}</Col></Row>)
             }
