@@ -1,0 +1,20 @@
+#card-table {
+    background-color: rgb(7, 99, 36);
+    color: rgb(241, 239, 239);
+}
+#playing-card {
+    margin: 2px 2px;
+    overflow: visible;
+}
+.not-current-player {
+    opacity: 0.5;
+}
+.btn.pontoon {
+    background-color: #1b3d17;
+    border-color: transparent;
+    margin: 1rem;
+}
+
+.btn.pontoon:hover {
+    background-color: #2b362a;
+}

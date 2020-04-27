@@ -15,6 +15,10 @@ import roomConfig from '../roomConfig';
 import migsReplies from '../MigsReplies';
 import './Rooms.css';
 import ScrollToBottom from 'react-scroll-to-bottom';
+import PontoonBotActor from '../bots/PontoonBotActor';
+import { Pontoon } from './Pontoon/Pontoon';
+import newMesageMp3 from '../assets/newmessage.mp3';
+import miaowMp3 from '../assets/miaow.mp3';
 
 
 
@@ -54,12 +58,15 @@ export class MessageActor extends Actor {
 
     onMessage(message) {
         console.log('queerplace: '+message.userId+' '+message.data);
+        this.rooms.newMessageSound.play();
         this.rooms.messages.push({name: this.rooms.userMap.get(message.userId), message: message.data});
         this.rooms.updateState();
     }
 }
 
 export class MigsActor extends Actor {
+
+    miaowSound = new Audio(miaowMp3);
     constructor(key, rooms) {
         super();
         this.key = key;
@@ -67,6 +74,7 @@ export class MigsActor extends Actor {
     }
 
     onMessage(message) {
+        this.miaowSound.play();
         this.rooms.messages.push({name: 'Migs', message: message.data});
         this.rooms.updateState();
     }
@@ -79,6 +87,7 @@ export class Rooms extends React.Component {
     passwordTried = false;
     userToRoomMap = new Map();
     meetingUpdateActor = undefined;
+    pontoonBotActor = undefined;
     usersToQuestion = [];
     initialRoom = undefined;
     currentRoomId = null;
@@ -87,6 +96,7 @@ export class Rooms extends React.Component {
     roomMap = new Map();
     userMap = new Map();
     messages = [];
+    newMessageSound = new Audio(newMesageMp3);
 
     constructor(props) {
         super(props);
@@ -98,13 +108,15 @@ export class Rooms extends React.Component {
         this.messageInput = React.createRef();
         this.lastMessageItem = React.createRef();
         this.displayRoomWarning = false;
-        this.state = this.makeState();
 
         this.actorSystem = new JitsiActorSystem(new StateActor('state', this), this.props.prefix, this.props.password, this.props.displayName,
         ()=>this.changeRooms(this.initialRoom), ()=>this.props.loginFailed());
+        this.pontoonBotActor = new PontoonBotActor('pontoon', this);
         this.actorSystem.registerActor(new RoomActor('room', this));
         this.actorSystem.registerActor(new MessageActor('message', this));
         this.actorSystem.registerActor(new MigsActor('migs',this));
+        this.actorSystem.registerActor(this.pontoonBotActor);
+        this.state = this.makeState();
     }
 
     setupRooms() {
@@ -158,7 +170,9 @@ export class Rooms extends React.Component {
         const cleanedText = text.toLowerCase().replace(/[ ]+/g,' ').replace(/[^0-9a-z ]/g,'').trim();
         if (cleanedText==='wheres migs' || cleanedText === 'where is migs') {
             setTimeout(()=>this.actorSystem.send('migs',migsReplies[migsReplyId]), 1000);
-
+        }
+        else {
+            this.pontoonBotActor.applyBot(cleanedText);
         }
     }
 
@@ -298,7 +312,6 @@ export class Rooms extends React.Component {
         }
     }
 
-
     makeState() {
         const otherRooms = [];
         const roomUserDisplayNameMap = new Map();
@@ -323,7 +336,8 @@ export class Rooms extends React.Component {
             "usersToQuestion": this.usersToQuestion,
             "currentRoom": this.roomName(this.currentRoomId),
             "otherRooms": otherRooms,
-            "messages": this.messages
+            "messages": this.messages,
+            "playing": this.pontoonBotActor.playing
         };
         return newState;
     }
@@ -410,7 +424,7 @@ export class Rooms extends React.Component {
                             {anyRoomQuestion}
                         </Card.Body>
                     </Card>
-                    <Card style={{ width: '100%%' }}>
+                    <Card style={{ width: '100%' }}>
                         <Card.Header>Party Chat</Card.Header>
                         <Card.Body className="chat">
                             <ScrollToBottom className="messageChat">
@@ -422,6 +436,7 @@ export class Rooms extends React.Component {
                             </InputGroup>
                         </Card.Body>
                     </Card>
+                    <Pontoon pontoonBotActor={this.pontoonBotActor} userMap={this.userMap} />
                 </Col>
             </Row>
         </Container>);
