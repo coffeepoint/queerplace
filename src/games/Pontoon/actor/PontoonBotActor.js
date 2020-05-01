@@ -15,8 +15,9 @@ export default class PontoonBotActor extends Actor {
     playing = false;
 
 
-    constructor(key, rooms) {
+    constructor(key, announcer, rooms) {
         super(key);
+        this.accouncer =  announcer;
         this.rooms = rooms;
         this.stateFunctions = {
             'initiate': this.initiate.bind(this),
@@ -217,7 +218,7 @@ export default class PontoonBotActor extends Actor {
     applyBot(cleanedText) {
         if (cleanedText==='lets play '+config.gameName.toLowerCase()) {
             if (this.state!=='initiate') {
-                this.actorSystem.send('migs', 'A game is already in progress, join the next one');
+                this.actorSystem.send(this.accouncer, 'A game is already in progress, join the next one');
             }
             else { 
                 this.actorSystem.send('pontoon', 'initiate');
@@ -225,7 +226,7 @@ export default class PontoonBotActor extends Actor {
         }
         else if (cleanedText==='lets play '+config.announcePrefix.toLowerCase()+config.gameName.toLowerCase()) {
             if (this.state!=='initiate') {
-                this.actorSystem.send('migs', 'A game is already in progress, join the next one');
+                this.actorSystem.send(this.accouncer, 'A game is already in progress, join the next one');
             }
             else { 
                 this.actorSystem.send('pontoon', 'announce');
@@ -295,13 +296,13 @@ export default class PontoonBotActor extends Actor {
                     if (this.announce && this.dealer) {
                         for (const playerResult of this.playerResults) {
                             if (playerResult.winner) {
-                                this.actorSystem.send('migs', config.winnerMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
+                                this.actorSystem.send(this.accouncer, config.winnerMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
                             }
                             if (playerResult.bust) {
-                                this.actorSystem.send('migs', config.bustMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
+                                this.actorSystem.send(this.accouncer, config.bustMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
                             }
                             if (playerResult.loser) {
-                                this.actorSystem.send('migs', config.loserMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
+                                this.actorSystem.send(this.accouncer, config.loserMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
                             }
                         }
                     }

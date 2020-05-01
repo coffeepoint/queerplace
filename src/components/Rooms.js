@@ -12,13 +12,12 @@ import JitsiMeetExternalAPI from '../jitsi-external';
 import Actor from '../middleware/Actor';
 import JitsiActorSystem from '../middleware/JitsiActorSystem';
 import roomConfig from '../roomConfig';
-import migsReplies from '../MigsReplies';
 import './Rooms.css';
 import ScrollToBottom from 'react-scroll-to-bottom';
 import PontoonBotActor from '../games/Pontoon/actor/PontoonBotActor';
+import CatActor from '../games/Cat/actor/CatActor';
 import { Pontoon } from '../games/Pontoon/components/Pontoon';
 import newMesageMp3 from '../assets/newmessage.mp3';
-import miaowMp3 from '../assets/miaow.mp3';
 
 
 
@@ -64,22 +63,6 @@ export class MessageActor extends Actor {
     }
 }
 
-export class MigsActor extends Actor {
-
-    miaowSound = new Audio(miaowMp3);
-    constructor(key, rooms) {
-        super();
-        this.key = key;
-        this.rooms = rooms;
-    }
-
-    onMessage(message) {
-        this.miaowSound.play();
-        this.rooms.messages.push({name: 'Migs', message: message.data});
-        this.rooms.updateState();
-    }
-}
-
 export class Rooms extends React.Component {
 
     api = null;
@@ -111,11 +94,12 @@ export class Rooms extends React.Component {
 
         this.actorSystem = new JitsiActorSystem(new StateActor('state', this), this.props.prefix, this.props.password, this.props.displayName,
         ()=>this.changeRooms(this.initialRoom), ()=>this.props.loginFailed());
-        this.pontoonBotActor = new PontoonBotActor('pontoon', this);
+        this.pontoonBotActor = new PontoonBotActor('pontoon', 'Migs', this);
+        this.gameActors = [this.pontoonBotActor, new CatActor('Migs', this)];
+        
         this.actorSystem.registerActor(new RoomActor('room', this));
         this.actorSystem.registerActor(new MessageActor('message', this));
-        this.actorSystem.registerActor(new MigsActor('migs',this));
-        this.actorSystem.registerActor(this.pontoonBotActor);
+        this.gameActors.map((actor)=>this.actorSystem.registerActor(actor));
         this.state = this.makeState();
     }
 
@@ -161,19 +145,10 @@ export class Rooms extends React.Component {
         }
     }
 
-    getRandomInt(max) {
-        return Math.floor(Math.random() * Math.floor(max));
-    }
-
     applyBots(text) {
-        const migsReplyId = this.getRandomInt(migsReplies.length);
         const cleanedText = text.toLowerCase().replace(/[ ]+/g,' ').replace(/[^0-9a-z ]/g,'').trim();
-        if (cleanedText==='wheres migs' || cleanedText === 'where is migs') {
-            setTimeout(()=>this.actorSystem.send('migs',migsReplies[migsReplyId]), 1000);
-        }
-        else {
-            this.pontoonBotActor.applyBot(cleanedText);
-        }
+        this.gameActors.map((actor)=>actor.applyBot(cleanedText));
+
     }
 
     maybeSendMessage(target) {
