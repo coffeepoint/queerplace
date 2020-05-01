@@ -1,4 +1,4 @@
-import Actor from '../middleware/Actor';
+import Actor from '../../../middleware/Actor';
 import config from './pontoonConfig';
 
 export default class PontoonBotActor extends Actor {

@@ -15,8 +15,8 @@ import roomConfig from '../roomConfig';
 import migsReplies from '../MigsReplies';
 import './Rooms.css';
 import ScrollToBottom from 'react-scroll-to-bottom';
-import PontoonBotActor from '../bots/PontoonBotActor';
-import { Pontoon } from './Pontoon/Pontoon';
+import PontoonBotActor from '../games/Pontoon/actor/PontoonBotActor';
+import { Pontoon } from '../games/Pontoon/components/Pontoon';
 import newMesageMp3 from '../assets/newmessage.mp3';
 import miaowMp3 from '../assets/miaow.mp3';
 
@@ -368,7 +368,7 @@ export class Rooms extends React.Component {
             const maybeButton = (room.roomId!==this.currentRoomId)?<Button variant="primary" onClick={() => this.changeRooms(room.roomId)}>Enter</Button>:undefined;
             otherRoomsCards.push(<Row key={room.roomId}><Card style={{ width: '200px' }}>
                 <Card.Header as="h6">{room.roomName}</Card.Header>
-                <Card.Img src="https://storiescdn.hornet.com/wp-content/uploads/2017/03/06131906/fire_island.jpg" />
+                <Card.Img src={'rooms/'+room.roomId+".jpeg"} />
                 <Card.Body className="p-1 m-1">
                     <ListGroup className="p-0 m-0">{occupantItems}</ListGroup>
                 </Card.Body>
