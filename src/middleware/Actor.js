@@ -5,6 +5,8 @@ export class Actor {
     }
 
     onMessage(message) {}
+
+    userLeft(userId) {}
 }
 
 export default Actor;

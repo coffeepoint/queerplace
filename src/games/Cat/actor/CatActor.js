@@ -6,7 +6,7 @@ export default class CatActor extends Actor {
 
     miaowSound = new Audio(miaowMp3);
     constructor(key, rooms) {
-        super();
+        super(key);
         this.key = key;
         this.rooms = rooms;
     }

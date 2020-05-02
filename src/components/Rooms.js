@@ -37,7 +37,7 @@ export class StateActor extends Actor {
 
 export class RoomActor extends Actor {
     constructor(key, rooms) {
-        super();
+        super(key);
         this.key = key;
         this.rooms = rooms;
     }

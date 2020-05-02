@@ -6,13 +6,11 @@ export default class PontoonBotActor extends Actor {
     players = new Map();
     playerOrder = [];
     playerResults = [];
-    dealer = undefined;
     myturn = false;
     deck = [];
     hand = [];
     state = 'initiate';
     stick = false;
-    playing = false;
 
 
     constructor(key, announcer, rooms) {
@@ -28,6 +26,18 @@ export default class PontoonBotActor extends Actor {
         };
     }
 
+    dealer() {
+        const amIDealer = this.playerOrder.indexOf(this.actorSystem.room.myUserId())===0;
+        if (amIDealer && this.deck.length===0) {
+            this.shuffle();
+        }
+        return amIDealer;
+    }
+
+    playing() {
+        return this.players.has(this.actorSystem.room.myUserId());
+    }
+
     gameName() {
         return (this.announce?config.announcePrefix:'')+config.gameName;
     }
@@ -36,22 +46,23 @@ export default class PontoonBotActor extends Actor {
         this.stateFunctions[this.state](message);
     }
 
+    reset() {
+        this.state = 'initiate';
+        this.players = new Map();
+        this.playerOrder = [];
+        this.playerResults = [];
+        this.myturn = false;
+        this.deck = [];
+        this.hand = [];
+        this.stick = false;
+    }
 
     initiate(message) {
         if (message.data==='initiate' || message.data==='announce') {
-            this.players = new Map();
-            this.playerOrder = [];
-            this.playerResults = [];
-            this.dealer = undefined;
-            this.myturn = false;
-            this.deck = [];
-            this.hand = [];
-            this.stick = false;
-            this.playing = false;
-            this.dealer = this.actorSystem.room.myUserId()===message.userId;
+            this.reset();
             this.state = 'invite';
             this.announce = (message.data==='announce');
-            if (this.dealer) {
+            if (message.userId===this.actorSystem.room.myUserId()) {
                 this.actorSystem.send(this.key,'join');
             }
             this.rooms.updateState();
@@ -59,9 +70,11 @@ export default class PontoonBotActor extends Actor {
     }
 
     invite(message) {
-        if (message.data==='start') {
-            if (this.dealer) {
-                this.shuffle();
+        if (message.data==='leave') {
+            this.userLeft(message.userId);
+        }
+        else if (message.data==='start') {
+            if (this.dealer()) {
                 this.dealCards();
             }
             this.state = 'deal';
@@ -69,9 +82,6 @@ export default class PontoonBotActor extends Actor {
         else if (message.data==='join') {
             this.players.set(message.userId, {'cards': 0, 'state': 'awaiting turn'});
             this.playerOrder.push(message.userId);
-            if (message.userId===this.actorSystem.room.myUserId()) {
-                this.playing = true;
-            }
             this.rooms.updateState();
         }    
     }
@@ -130,8 +140,10 @@ export default class PontoonBotActor extends Actor {
     }
 
     deal(message) {
-        console.log('DEAL '+message.userId+' '+message.data);
-        if (message.data==='play') {
+        if (message.data==='leave') {
+            this.userLeft(message.userId);
+        }
+        else if (message.data==='play') {
             this.state = 'play';
             this.rooms.updateState();
         }
@@ -151,14 +163,17 @@ export default class PontoonBotActor extends Actor {
     play(message) {
         if (this.gameFinished()) {
             this.state = 'results';
-            if (this.dealer) {
+            if (this.dealer()) {
                 this.actorSystem.send(this.key, 'reveal');
             }
+        }
+        else if (message.data==='leave') {
+            this.userLeft(message.userId);
         }
         else {
 
             if (message.data==='twist') {
-                if (this.dealer) {
+                if (this.dealer()) {
                     this.dealNextCard(message.userId);
                 }
                 const currentCardCount = this.players.get(message.userId).cards;
@@ -185,7 +200,7 @@ export default class PontoonBotActor extends Actor {
                         const currentCardCount = this.players.get(data[1]).cards;
                         this.players.set(data[1], {'cards': currentCardCount, 'state': 'playing'});
                     }
-                    if  (data[1]===this.actorSystem.room.myUserId()) {
+                    if  (data[1]===this.actorSystem.room.myUserId() && !this.myturn) {
                         if (!this.canPlay())  {
                             this.actorSystem.send(this.key,'stick');
                         } 
@@ -234,6 +249,30 @@ export default class PontoonBotActor extends Actor {
         }
     }
 
+    userLeft(userId) {
+        console.log('Pontoon removing '+userId);
+        if (this.players.has(userId)) {
+            console.log('Pontoon removing '+userId);
+            const player = this.players.get(userId);
+            if (player.state==='playing') {
+                const myPlayerPosition = this.playerOrder.indexOf(userId);
+                const nextPlayerPosition = (myPlayerPosition + 1) % this.playerOrder.length;
+                this.myturn = false;
+                this.actorSystem.send(this.key, 'nextplayer:'+this.playerOrder[nextPlayerPosition]);
+
+            }
+            this.playerOrder = this.playerOrder.filter((playerId)=>playerId!==userId);
+            this.players.delete(userId);
+            if (userId===this.actorSystem.room.myUserId()) {
+                this.hand=[];
+            }
+            if (this.playerOrder.length===0) {
+                this.reset();
+            }
+        }
+        this.rooms.updateState();
+    }
+
 
     bestCardScore(hand) {
         var bestScore=0;
@@ -261,7 +300,7 @@ export default class PontoonBotActor extends Actor {
 
     results(message) {
         if (message.data==='reveal') {
-            if (this.playing) {
+            if (this.playing()) {
                 this.actorSystem.send(this.key, 'hand:'+this.hand.join());
             }
         }
@@ -293,16 +332,18 @@ export default class PontoonBotActor extends Actor {
                     if (!this.playerResults[this.playerResults.length-1].bust) {
                         this.playerResults[this.playerResults.length-1].loser = true;
                     }
-                    if (this.announce && this.dealer) {
+                    if (this.announce && this.dealer()) {
                         for (const playerResult of this.playerResults) {
                             if (playerResult.winner) {
                                 this.actorSystem.send(this.accouncer, config.winnerMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
                             }
-                            if (playerResult.bust) {
-                                this.actorSystem.send(this.accouncer, config.bustMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
-                            }
-                            if (playerResult.loser) {
-                                this.actorSystem.send(this.accouncer, config.loserMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
+                            else {
+                                if (playerResult.bust) {
+                                    this.actorSystem.send(this.accouncer, config.bustMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
+                                }
+                                else if (playerResult.loser) {
+                                    this.actorSystem.send(this.accouncer, config.loserMessage.replace('%',this.rooms.userMap.get(playerResult.player)).replace('&',this.gameName()));
+                                }
                             }
                         }
                     }

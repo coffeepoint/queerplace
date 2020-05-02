@@ -33,6 +33,10 @@ export class Pontoon extends React.Component {
         this.props.pontoonBotActor.actorSystem.send('pontoon', 'stick');
     }
 
+    leave() {
+        this.props.pontoonBotActor.actorSystem.send('pontoon', 'leave');
+    }
+
     playagain() {
         this.props.pontoonBotActor.actorSystem.send('pontoon', 'playagain');
     }
@@ -61,7 +65,7 @@ export class Pontoon extends React.Component {
             if (playerNames.length>1) {
                 maybeStartGameButton.push(<Button className='pontoon' onClick={() => this.startPontoon()}>Start Game</Button>); 
             }
-            if (this.props.pontoonBotActor.playing) {
+            if (this.props.pontoonBotActor.playing()) {
             pontoonCardBody.push(<Form inline>{prefix} to play {this.props.pontoonBotActor.gameName()}!<Form.Group controlId="pontoon">
                 {maybeStartGameButton}
                 </Form.Group></Form>);
@@ -70,7 +74,7 @@ export class Pontoon extends React.Component {
                 pontoonCardBody.push(<Form inline>{prefix} to play {this.props.pontoonBotActor.gameName()}!<Form.Group controlId="pontoon">
                 <Button className='pontoon' onClick={() => this.joinPontoon()}>Join Them</Button>
                 </Form.Group></Form>);
-            }
+            } 
             
         }
         else if (this.props.pontoonBotActor.state==='play') {
@@ -82,8 +86,13 @@ export class Pontoon extends React.Component {
             if (this.props.pontoonBotActor.myturn) {
                 this.yourTurnSound.play();
                 actions.push(<Form inline> <Form.Group controlId="pontoon"><Button className='pontoon' onClick={() => this.twist()}>Twist!</Button>
-                <Button className='pontoon' onClick={() => this.stick()}>Stick!</Button>
-             </Form.Group></Form>)
+                <Button className='pontoon' onClick={() => this.stick()}>Stick!</Button><Button className='pontoon' onClick={() => this.leave()}>Leave Game</Button>
+             </Form.Group></Form>);
+            }
+            else if (this.props.pontoonBotActor.playing()) {
+                actions.push(<Form inline> <Form.Group controlId="pontoon">
+                <Button className='pontoon' onClick={() => this.leave()}>Leave Game</Button>
+             </Form.Group></Form>);
             }
             const playerList = [];
             for (const playerId of this.props.pontoonBotActor.playerOrder) {
@@ -106,7 +115,7 @@ export class Pontoon extends React.Component {
                         </Container></Col>
                     <Col md='auto'><Container>{playerList}</Container></Col>
                 </Row>
-            </Container>)
+            </Container>);
 
         }
         else if (this.props.pontoonBotActor.state==='results') {

@@ -7,6 +7,7 @@ export class JitsiActorSystem {
     userMap = new Map();
     meetingUpdateActor = undefined;
     actorMap = new Map();
+    passwordTried = false;
 
 
     constructor(meetingUpdateActor, roomName, password, displayName, systemUp, systemFailed) {
@@ -56,6 +57,9 @@ export class JitsiActorSystem {
             });
             that.room.on(JitsiMeetJS.events.conference.USER_LEFT, id => {
                 console.log('user left ' + id);
+                that.actorMap.forEach((actor, key) => {
+                    actor.userLeft(id);
+                });
                 that.userMap.delete(id);
                 that.updateState();
             });
@@ -66,7 +70,8 @@ export class JitsiActorSystem {
             that.room.on(JitsiMeetJS.events.conference.CONFERENCE_JOINED, () => {
                 console.log('Conference Joined');
                 if (!that.passwordTried) {
-                    that.room.lock(that.password);
+                    // seems to a slight delay until moderator status kicks in.
+                    setTimeout(()=>that.room.lock(that.password),500);
                 }
                 that.userMap.set(that.room.myUserId(), that.displayName);
                 that.room.setDisplayName(that.displayName);
